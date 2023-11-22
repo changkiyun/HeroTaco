@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.herotaco">
+<!--    위치권한설정-->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -9,6 +12,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HeroTaco">
+
+        <meta-data
+            android:name="com.naver.maps.map.CLIENT_ID"
+            android:value="ou9fferwjc"/>
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -19,5 +26,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
