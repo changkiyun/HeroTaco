@@ -2,6 +2,7 @@ package com.example.herotaco;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -9,6 +10,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentManager;
 
+import com.example.herotaco.OpenAPI.Item;
+import com.example.herotaco.OpenAPI.MyAsyncTask;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.naver.maps.geometry.LatLng;
 import com.naver.maps.map.LocationTrackingMode;
@@ -22,8 +25,18 @@ import com.naver.maps.map.overlay.OverlayImage;
 import com.naver.maps.map.util.FusedLocationSource;
 
 import android.Manifest;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1000;
@@ -38,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FloatingActionButton mainFloat;
 
     private Marker testMaker = new Marker();
+
+    InputStream is;
 
     @Override
     public void onMapReady(@NonNull NaverMap naverMap) {
@@ -75,6 +90,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        //AsynTask
+        MyAsyncTask myAsyncTask = new MyAsyncTask();
+        myAsyncTask.execute();
 
         mainFloat = findViewById(R.id.mainFloat);
 
@@ -103,8 +121,4 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
-
-
-
-
 }
