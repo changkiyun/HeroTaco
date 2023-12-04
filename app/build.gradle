@@ -32,7 +32,10 @@ dependencies {
     //NaverMap API SDK
     implementation 'com.naver.maps:map-sdk:3.14.0'
     //위치관련 의존성
-    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-location:20.0.0'
+
+    //FloatingButton
+    
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.10.0'
