@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.herotaco">
-<!--    위치권한설정-->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 위치권한설정 -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -15,11 +15,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HeroTaco"
         android:usesCleartextTraffic="true">
-
+        <activity
+            android:windowSoftInputMode="adjustNothing"
+            android:name=".EditTacoInfo"
+            android:exported="false" />
 
         <meta-data
             android:name="com.naver.maps.map.CLIENT_ID"
-            android:value="ou9fferwjc"/>
+            android:value="ou9fferwjc" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -29,7 +33,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ReportTaco"/>
-        <activity android:name=".ReportTacoInfo"/>
+        <activity android:name=".ReportTaco"
+            android:windowSoftInputMode="adjustNothing"
+            />
+        <activity android:name=".ReportTacoInfo" />
     </application>
+
 </manifest>

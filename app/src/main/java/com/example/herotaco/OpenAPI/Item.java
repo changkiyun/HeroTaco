@@ -1,5 +1,9 @@
 package com.example.herotaco.OpenAPI;
 
+import android.content.Context;
+
+import com.naver.maps.geometry.LatLng;
+
 public class Item {
     //RDNWHLADDR
     String roadAddress;
@@ -11,6 +15,10 @@ public class Item {
     String tel;
     //BPLCNM
     String name;
+
+    LatLng latLng;
+
+
 
     public String getRoadAddress() {
         return roadAddress;
@@ -50,5 +58,13 @@ public class Item {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public LatLng getLatLng() {
+        return latLng;
+    }
+
+    public void setLatLng(LatLng latLng) {
+        this.latLng = latLng;
     }
 }

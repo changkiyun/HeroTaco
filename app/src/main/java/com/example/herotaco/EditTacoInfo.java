@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.telephony.PhoneNumberFormattingTextWatcher;
 import android.util.Log;
@@ -31,8 +32,12 @@ import com.example.herotaco.Firebase.FoodTruckInfo;
 import com.example.herotaco.OpenAPI.MyAsyncTask;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.GenericTypeIndicator;
+import com.google.firebase.database.ValueEventListener;
 import com.gun0912.tedpermission.rx3.TedPermission;
 import com.naver.maps.geometry.LatLng;
 import com.naver.maps.map.CameraUpdate;
@@ -50,7 +55,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback {
+public class EditTacoInfo extends AppCompatActivity implements OnMapReadyCallback {
     private FusedLocationProviderClient fusedLocationClient;
     private FusedLocationSource locationSource;
     private NaverMap reportTacoNaverMap;
@@ -62,6 +67,7 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
     RadioButton cbReportFish, cbReportTaco, cbReportskewke, cbReportchiken;
     RadioGroup rgReportMenu;
     CheckBox cbMon, cbTue, cbWed, cbThu, cbFri, cbSat, cbSun;
+    CheckBox[] checkBoxes;
     //영업시간 타임피커
     TimePicker tpReportStart, tpReportEnd;
     //영업시간 저장변수
@@ -72,9 +78,17 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
     //체크된 체크박스를 초기화하고 파이어베이스에 저장하기 위한 변수
     Boolean[] dayCheckBoolean;
 
-    //Firebase
+    //Firebase List를 가져오기위한 참조객체
     private FirebaseDatabase reportDatabase = FirebaseDatabase.getInstance();
     private DatabaseReference reportReference = reportDatabase.getReference();
+    //Firebase 매장 정보를 가져오기위한 참조객체
+    private FirebaseDatabase editDatabase = FirebaseDatabase.getInstance();
+    private DatabaseReference editReference = editDatabase.getReference("foodTruck");
+    private DatabaseReference truckInfoDatabase;
+    //바텀시트다이얼로스에서 받아온 식당 이름(DB 참조를 위함)
+    String foodTruckname;
+    FoodTruckInfo foodTruckInfo;
+
 
     //위치권한
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1000;
@@ -84,18 +98,11 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
     };
 
 
-
-
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.report_taco);
+        setContentView(R.layout.edit_taco_info);
 
-//        checkBoxes = new CheckBox[]{cbReportFish, cbReportTaco, cbReportskewke, cbReportchiken};
-
-        // 위치 정보 클라이언트 초기화
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         tvLocation = findViewById(R.id.tv_location);
         btnConfirm = findViewById(R.id.btn_confirm);
         cbReportFish = findViewById(R.id.cb_report_fish);
@@ -115,14 +122,66 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         tpReportEnd = findViewById(R.id.tp_report_end);
         rgReportMenu = findViewById(R.id.rg_report_memu);
 
-        //체크박스를 false로 초기화
+        //바텀시트 다이얼로스에서 받아온 식당이름
+        Intent intent = getIntent();
+        foodTruckname = intent.getStringExtra("foodTruckInfo");
+        //체크박스 초기화를 위한 변수
+        checkBoxes = new CheckBox[] {cbMon, cbTue, cbWed, cbThu, cbFri, cbSat, cbSun};
         dayCheckBoolean = new Boolean[7];
-        for(int i=0; i < dayCheckBoolean.length; i++){
-            dayCheckBoolean[i] = false;
-        }
-        //자동 -
+        Arrays.fill(dayCheckBoolean, false);
+        //수정을 위한 기존 정보 가져오기
+        reportReference.child("foodTruck").child(foodTruckname).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                foodTruckInfo = snapshot.getValue(FoodTruckInfo.class);
+                edtReportName.setText(foodTruckInfo.getName());
+                edtReportTel.setText(foodTruckInfo.getTel());
+                setStartTime(foodTruckInfo.getStartHour(), foodTruckInfo.getStartMinute());
+                setEndTime(foodTruckInfo.getEndHour(), foodTruckInfo.getEndMinute());
+                if(foodTruckInfo.getFoodType().equals("붕어빵")){
+                    cbReportFish.setChecked(true);
+                } else if (foodTruckInfo.getFoodType().equals("타코야끼")) {
+                    cbReportTaco.setChecked(true);
+                } else if (foodTruckInfo.getFoodType().equals("치킨")) {
+                    cbReportchiken.setChecked(true);
+                } else{
+                    cbReportskewke.setChecked(true);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.d("EditTacoInfo", "식당이름으로 조회 실패");
+            }
+        });
+        truckInfoDatabase = FirebaseDatabase.getInstance().getReference();
+        truckInfoDatabase.child("foodTruck").child(foodTruckname).child("dayCheckBooleanList").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                GenericTypeIndicator<List<Boolean>> t = new GenericTypeIndicator<List<Boolean>>() { };
+                final List<Boolean> checkBoolean = snapshot.getValue(t);
+                for (int i = 0; i < checkBoolean.size(); i++) {
+                    if (checkBoolean.get(i) == true) {
+                        checkBoxes[i].setChecked(true);
+                    }
+                }
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.d("Database", "Boolean배열 가져오기 실패");
+            }
+        });
+
+
+
+        //자동 하이폰
         edtReportTel.addTextChangedListener(new PhoneNumberFormattingTextWatcher());
 
+
+        // 위치 정보 클라이언트 초기화
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         // 지도 초기화
         FragmentManager fm = getSupportFragmentManager();
         MapFragment mapFragment = (MapFragment) fm.findFragmentById(R.id.report_taco_navermap);
@@ -181,7 +240,7 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         });
 
 
-        //푸드트럭 정보 Firebase에 등록
+        //확인버튼 클릭 시 푸드트럭 정보 Firebase에 저장
         btnConfirm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -192,12 +251,13 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
             }
         });
     }
-    //푸드트럭 정보 Firebase에 등록
-    public void setFoodTruckInfo(String name, String tel, String foodType, String address, Double latitude, Double longitude,
-                                 List<Boolean> dayCheckBooleanArray, int startHour, int startMinute, int endHour, int endMinute){
-        FoodTruckInfo foodTruckInfo = new FoodTruckInfo(name, tel, foodType, address, latitude, longitude, dayCheckBooleanArray, startHour, startMinute, endHour, endMinute);
-        reportReference.child("foodTruck").child(name).setValue(foodTruckInfo);
 
+    //푸드트럭 정보 Firebase에 저장하는 setFoodTruckInfo함수
+    public void setFoodTruckInfo(String name, String tel, String foodType, String address, Double latitude, Double longitude,
+                                 List<Boolean> dayCheckBooleanArray, int startHour, int startMinute, int endHour, int endMinute) {
+        FoodTruckInfo foodTruckInfo = new FoodTruckInfo(name, tel, foodType, address, latitude, longitude, dayCheckBooleanArray, startHour, startMinute, endHour, endMinute);
+
+        reportReference.child("foodTruck").child(foodTruckname).setValue(foodTruckInfo);
     }
 
     // 핀 움직여서 주소 가져오기
@@ -227,15 +287,16 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         marker.setMap(reportTacoNaverMap);
 
 
-        //가시거리 내에 있는 마커만 출력
-        reportTacoNaverMap.addOnCameraChangeListener(new NaverMap.OnCameraChangeListener() {
-            @Override
-            public void onCameraChange(int i, boolean b) {
-
-            }
-        });
+//        //가시거리 내에 있는 마커만 출력
+//        reportTacoNaverMap.addOnCameraChangeListener(new NaverMap.OnCameraChangeListener() {
+//            @Override
+//            public void onCameraChange(int i, boolean b) {
+//
+//            }
+//        });
 
         // 지도 이동 시 이벤트 처리
+        //카메라가 이동할 때 마커를 중앙에 표시
         reportTacoNaverMap.addOnCameraChangeListener(new NaverMap.OnCameraChangeListener() {
             @Override
             public void onCameraChange(int i, boolean b) {
@@ -271,29 +332,25 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         });
 
         // 위치 권한이 허용된 경우
-        if (ActivityCompat.checkSelfPermission(
-                this, PERMISSION[0]
-        ) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(
-                        this, PERMISSION[1]
-                ) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, PERMISSION[0]) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, PERMISSION[1]) == PackageManager.PERMISSION_GRANTED) {
             // 마지막으로 알려진 위치를 요청
             fusedLocationClient.getLastLocation()
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             Location currentLocation = task.getResult();
                             if (currentLocation != null) {
-                                // 현재 위치 처리
+                                // 내 위치 표시
                                 naverMap.getLocationOverlay().setVisible(true);
                                 naverMap.getLocationOverlay().setPosition(new LatLng(
                                         currentLocation.getLatitude(),
                                         currentLocation.getLongitude()
                                 ));
 
+                                //카메라 위치를 이동 (핀은 가운데 고정이기때문에 카메라가 이동하면 핀도 따라 움직임)
                                 CameraUpdate cameraUpdate = CameraUpdate.scrollTo(
                                         new LatLng(
-                                                currentLocation.getLatitude(),
-                                                currentLocation.getLongitude()
+                                                foodTruckInfo.getLatitude(),
+                                                foodTruckInfo.getLongitude()
                                         )
                                 );
                                 naverMap.moveCamera(cameraUpdate);
@@ -353,6 +410,7 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
             return null;
         }
     }
+
     //주소 -> 위도 변환
     private Double getLatitude(String address) {
         Geocoder geocoder = new Geocoder(this, Locale.KOREA);
@@ -373,6 +431,7 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
             return null;
         }
     }
+
     //주소 -> 경도 변환
     private Double getLongitude(String address) {
         Geocoder geocoder = new Geocoder(this, Locale.KOREA);
@@ -395,13 +454,13 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
     }
 
     //선택된 요일 체크 함수
-    private void dayCheckFun(){
+    private void dayCheckFun() {
         cbMon.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbMon.isChecked()){
+                if (cbMon.isChecked()) {
                     dayCheckBoolean[0] = true;
-                }else{
+                } else {
                     dayCheckBoolean[0] = false;
                 }
             }
@@ -409,9 +468,9 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbTue.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbTue.isChecked()){
+                if (cbTue.isChecked()) {
                     dayCheckBoolean[1] = true;
-                }else{
+                } else {
                     dayCheckBoolean[1] = false;
                 }
             }
@@ -419,9 +478,9 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbWed.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbWed.isChecked()){
+                if (cbWed.isChecked()) {
                     dayCheckBoolean[2] = true;
-                }else{
+                } else {
                     dayCheckBoolean[2] = false;
                 }
             }
@@ -429,9 +488,9 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbThu.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbThu.isChecked()){
+                if (cbThu.isChecked()) {
                     dayCheckBoolean[3] = true;
-                }else{
+                } else {
                     dayCheckBoolean[3] = false;
                 }
             }
@@ -439,9 +498,9 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbFri.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbFri.isChecked()){
+                if (cbFri.isChecked()) {
                     dayCheckBoolean[4] = true;
-                }else{
+                } else {
                     dayCheckBoolean[4] = false;
                 }
             }
@@ -449,9 +508,9 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbSat.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbSat.isChecked()){
+                if (cbSat.isChecked()) {
                     dayCheckBoolean[5] = true;
-                }else{
+                } else {
                     dayCheckBoolean[5] = false;
                 }
             }
@@ -459,12 +518,27 @@ public class ReportTaco extends AppCompatActivity implements OnMapReadyCallback 
         cbSun.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(cbSun.isChecked()){
+                if (cbSun.isChecked()) {
                     dayCheckBoolean[6] = true;
-                }else{
+                } else {
                     dayCheckBoolean[6] = false;
                 }
             }
         });
+    }
+
+    //setHour 메소드를 사용하면 AP! LEVEL23이 필요하다는 오류가 생겨
+    private void setStartTime(int hour, int minute) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            tpReportStart.setHour(hour);
+            tpReportStart.setMinute(minute);
+        }
+    }
+
+    private void setEndTime(int hour, int minute) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            tpReportEnd.setHour(hour);
+            tpReportEnd.setMinute(minute);
+        }
     }
 }
